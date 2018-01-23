@@ -10,20 +10,16 @@ from django.http import HttpResponse
 
 
 from . import models
+from . import serializers
 
 # Create your views here.
 
-class HelloApiView(APIView):
-    """Test API View."""
+class MessagesApiView(APIView):
+    """Messages API View."""
+    serializer_class = serializers.ConsumerServiceMsgSerializer
 
     def get(self, request, format=None):
-        """Returns a list of APIView features."""
+        """Returns a list of Consumer Service Messages."""
         queryset = models.ConsumerServiceMessages.objects.all()
-        an_apiview = [
-            'Uses HTTP methods as function (get, post, patch, put, delete)',
-            'It is similar to a traditional Django view',
-            'Gives you the most control over your logic',
-            'Is mapped manually to URLs'
-        ]
-
-        return Response({'messages': queryset})
+        response = self.serializer_class(queryset, many=True)
+        return Response(response.data)

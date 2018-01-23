@@ -20,7 +20,11 @@ class ConsumerServiceMessages(models.Model):
         blank=True
     )
 
+    def __str__(self):
+        return self.message
+
     class Meta:
         app_label = 'consumer_rest_api'
         verbose_name = _('Message')
         verbose_name_plural = _('Messages')
+        db_table = 'consumer_service_messages'

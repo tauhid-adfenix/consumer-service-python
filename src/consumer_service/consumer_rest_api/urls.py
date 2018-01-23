@@ -8,5 +8,5 @@ from . import views
 router = DefaultRouter()
 
 urlpatterns = [
-    url(r'^data/$', views.HelloApiView.as_view())
+    url(r'^data/$', views.MessagesApiView.as_view())
 ]
