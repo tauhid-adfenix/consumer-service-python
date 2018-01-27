@@ -1,11 +1,10 @@
 import pika
+import sys
 from django.conf import settings
 import threading, time
 import logging
 from . import models
-
-RABBITMQ_HOST = getattr(settings, "RABBITMQ_HOST", '127.0.0.1')
-RABBITMQ_QUEUE = 'rabittmq.test.queue'
+import json
 
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
@@ -26,10 +25,10 @@ class ExampleConsumer(object):
     commands that were issued and that should surface in the output as well.
 
     """
-    EXCHANGE = None
-    EXCHANGE_TYPE = None
-    QUEUE = 'rabittmq.test.queue'
-    ROUTING_KEY = None
+    EXCHANGE = ''
+    EXCHANGE_TYPE = ''
+    QUEUE = getattr(settings, "RABBITMQ_QUEUE", 'rabittmq.test.queue')
+    ROUTING_KEY = ''
 
     def __init__(self, amqp_url):
         """Create a new instance of the consumer class, passing in the AMQP
@@ -53,7 +52,9 @@ class ExampleConsumer(object):
 
         """
         LOGGER.info('Connecting to %s', self._url)
-        return pika.SelectConnection(pika.URLParameters(self._url),
+        credentials = pika.credentials.PlainCredentials(username=settings.RABBITMQ_USER,
+                                                        password=settings.RABITBQ_PASS)
+        return pika.SelectConnection(pika.ConnectionParameters(host=settings.RABBITMQ_HOST,credentials=credentials),
                                      self.on_connection_open,
                                      stop_ioloop_on_close=False)
 
@@ -132,7 +133,8 @@ class ExampleConsumer(object):
         LOGGER.info('Channel opened')
         self._channel = channel
         self.add_on_channel_close_callback()
-        self.setup_exchange(self.EXCHANGE)
+        # self.setup_exchange(self.EXCHANGE)
+        self.setup_queue(self.QUEUE)
 
     def add_on_channel_close_callback(self):
         """This method tells pika to call the on_channel_closed method if
@@ -190,7 +192,7 @@ class ExampleConsumer(object):
 
         """
         LOGGER.info('Declaring queue %s', queue_name)
-        self._channel.queue_declare(self.on_queue_declareok, queue_name)
+        self._channel.queue_declare(self.on_queue_declareok, queue_name, True)
 
     def on_queue_declareok(self, method_frame):
         """Method invoked by pika when the Queue.Declare RPC call made in
@@ -204,9 +206,9 @@ class ExampleConsumer(object):
         """
         LOGGER.info('Binding %s to %s with %s',
                     self.EXCHANGE, self.QUEUE, self.ROUTING_KEY)
-        self._channel.queue_bind(self.on_bindok, self.QUEUE,
-                                 self.EXCHANGE, self.ROUTING_KEY)
-
+        # self._channel.queue_bind(self.on_bindok, self.QUEUE,
+        #                          self.EXCHANGE, self.ROUTING_KEY)
+        self.start_consuming()
     def on_bindok(self, unused_frame):
         """Invoked by pika when the Queue.Bind method has completed. At this
         point we will start consuming messages by calling start_consuming
@@ -270,8 +272,14 @@ class ExampleConsumer(object):
         """
         LOGGER.info('Received message # %s from %s: %s',
                     basic_deliver.delivery_tag, properties.app_id, body)
-
-        models.ConsumerServiceMessages.create(message=body)
+        try:
+            data = json.load(body)
+            message = data["message"]
+        except AttributeError as err:
+            message = "Message not delivered..."
+            LOGGER.warning(err)
+            
+        models.ConsumerServiceMessages.objects.create(message=message)
         self.acknowledge_message(basic_deliver.delivery_tag)
 
     def acknowledge_message(self, delivery_tag):
@@ -346,16 +354,22 @@ class ExampleConsumer(object):
 
 def main():
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-    example = ExampleConsumer('amqp://guest:guest@localhost:5672')
+    broker_url = get_rabbitmq_broker_url()
+    LOGGER.info('<<< RABITMQ connection ')
+    example = ExampleConsumer(broker_url)
     try:
         example.run()
-    except:
+    except KeyboardInterrupt:
         example.stop()
-        threading.Timer(5.0, start()).start()
 
+def get_rabbitmq_broker_url():
+    return settings.RABBITMQ_BROKER_URL
 
 def start():
     threading.Timer(5.0, main).start()
 
-t1 = threading.Thread(target=start(), args=[])
-t1.run()
+
+#Running in background thread when server is running
+if sys.argv[1] == 'runserver':
+    thread = threading.Thread(target=start(), args=[])
+    thread.run()

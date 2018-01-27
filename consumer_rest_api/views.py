@@ -11,6 +11,7 @@ from django.http import HttpResponse
 
 from . import models
 from . import serializers
+from . import receiver
 
 # Create your views here.
 

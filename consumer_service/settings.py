@@ -127,7 +127,12 @@ STATIC_URL = '/static/'
 
 # Config for RabbitMQ
 RABBITMQ_HOST = 'rabbitmq'
-# RABBITMQ_QUEUE = 'rabittmq.test.queue'
+RABBITMQ_QUEUE = 'rabittmq.test.queue'
+RABBITMQ_USER = 'guest'
+RABITBQ_PASS = 'guest'
+RABBITMQ_PORT = 5672
+
+RABBITMQ_BROKER_URL = 'amqp://' + RABBITMQ_USER + ':' + RABITBQ_PASS + '@' + RABBITMQ_HOST + ':5672'
 # CELERY_BROKER_URL = 'amqp://guest:guest@' + RABBITMQ_HOST + ':5672'
 # CELERY_ACCEPT_CONTENT = ['application/json']
 # CELERY_TASK_SERIALIZER = 'json'
