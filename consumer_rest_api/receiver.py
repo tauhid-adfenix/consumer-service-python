@@ -272,8 +272,10 @@ class ExampleConsumer(object):
         """
         LOGGER.info('Received message # %s from %s: %s',
                     basic_deliver.delivery_tag, properties.app_id, body)
+
         try:
-            data = json.load(body)
+            body = body.decode('utf-8')
+            data = json.loads(body)
             message = data["message"]
         except AttributeError as err:
             message = "Message not delivered..."
